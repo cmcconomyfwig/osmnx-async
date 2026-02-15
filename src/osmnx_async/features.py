@@ -5,15 +5,11 @@ from __future__ import annotations
 import logging as lg
 from typing import TYPE_CHECKING
 
-from shapely import MultiPolygon
-from shapely import Polygon
-
 from osmnx import features as _features_sync
-from osmnx import utils
-from osmnx import utils_geo
+from osmnx import utils, utils_geo
+from shapely import MultiPolygon, Polygon
 
-from . import _overpass
-from . import geocoder
+from . import _overpass, geocoder
 
 if TYPE_CHECKING:
     import geopandas as gpd

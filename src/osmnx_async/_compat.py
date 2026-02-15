@@ -39,7 +39,6 @@ def check_osmnx_compatibility() -> None:
         If required internal functions are missing from the installed osmnx.
     """
     import osmnx
-
     from packaging.version import Version
 
     raw_version = osmnx.__version__.replace("dev", ".dev0")

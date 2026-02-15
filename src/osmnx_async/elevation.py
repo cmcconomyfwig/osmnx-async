@@ -10,9 +10,7 @@ import httpx
 import networkx as nx
 import numpy as np
 import pandas as pd
-
-from osmnx import _http
-from osmnx import utils
+from osmnx import _http, utils
 from osmnx._errors import InsufficientResponseError
 
 from . import _http as _ahttp

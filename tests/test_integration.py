@@ -1,4 +1,4 @@
-# ruff: noqa: PLR2004, S101
+# ruff: noqa: PLR2004, S101, TC002
 """Integration tests comparing sync osmnx vs async osmnx_async results.
 
 These tests make REAL network requests (or use cached responses) to verify
@@ -8,8 +8,6 @@ Run with: uv run pytest tests/test_integration.py -v
 """
 
 from __future__ import annotations
-
-import asyncio
 
 import geopandas as gpd
 import networkx as nx

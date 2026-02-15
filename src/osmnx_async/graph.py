@@ -5,20 +5,11 @@ from __future__ import annotations
 import logging as lg
 
 import networkx as nx
-from shapely import MultiPolygon
-from shapely import Polygon
-
-from osmnx import distance
+from osmnx import distance, projection, simplification, stats, truncate, utils, utils_geo
 from osmnx import graph as _graph_sync
-from osmnx import projection
-from osmnx import simplification
-from osmnx import stats
-from osmnx import truncate
-from osmnx import utils
-from osmnx import utils_geo
+from shapely import MultiPolygon, Polygon
 
-from . import _overpass
-from . import geocoder
+from . import _overpass, geocoder
 from ._settings import get as _settings_get
 
 

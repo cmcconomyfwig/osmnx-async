@@ -11,11 +11,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
-
-from osmnx import _http
-from osmnx import utils
-from osmnx._errors import InsufficientResponseError
-from osmnx._errors import ResponseStatusCodeError
+from osmnx import _http, utils
+from osmnx._errors import InsufficientResponseError, ResponseStatusCodeError
 
 from ._settings import get as _settings_get
 

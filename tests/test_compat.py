@@ -7,8 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from osmnx_async._compat import OsmnxCompatibilityError
-from osmnx_async._compat import check_osmnx_compatibility
+from osmnx_async._compat import OsmnxCompatibilityError, check_osmnx_compatibility
 
 
 class TestOsmnxCompat:

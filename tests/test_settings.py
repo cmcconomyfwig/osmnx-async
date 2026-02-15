@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import osmnx as ox
 
-from osmnx_async._settings import _settings_overrides
-from osmnx_async._settings import get
+from osmnx_async._settings import _settings_overrides, get
 
 
 class TestAsyncSettings:

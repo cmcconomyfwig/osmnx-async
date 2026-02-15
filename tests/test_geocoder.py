@@ -3,12 +3,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from osmnx._errors import InsufficientResponseError
+
 from osmnx_async import geocoder as aio_geocoder
 
 

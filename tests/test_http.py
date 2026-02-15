@@ -9,12 +9,14 @@ import httpx
 import osmnx as ox
 import pytest
 
-from osmnx_async._http import _async_retrieve_from_cache
-from osmnx_async._http import _async_save_to_cache
-from osmnx_async._http import _build_request_kwargs
-from osmnx_async._http import _get_http_headers
-from osmnx_async._http import _parse_response
-from osmnx_async._http import _resolve_url_to_ip
+from osmnx_async._http import (
+    _async_retrieve_from_cache,
+    _async_save_to_cache,
+    _build_request_kwargs,
+    _get_http_headers,
+    _parse_response,
+    _resolve_url_to_ip,
+)
 
 
 class TestAsyncHttp:

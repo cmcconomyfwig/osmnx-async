@@ -8,9 +8,7 @@ from collections import OrderedDict
 from typing import Any
 
 import httpx
-
-from osmnx import _http
-from osmnx import utils
+from osmnx import _http, utils
 from osmnx._errors import InsufficientResponseError
 
 from . import _http as _ahttp

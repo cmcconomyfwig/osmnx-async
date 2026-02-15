@@ -6,15 +6,12 @@ import asyncio
 import datetime as dt
 import logging as lg
 from collections import OrderedDict
-from typing import TYPE_CHECKING
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import numpy as np
-
-from osmnx import _http
+from osmnx import _http, utils
 from osmnx import _overpass as _overpass_sync
-from osmnx import utils
 from osmnx._errors import InsufficientResponseError
 
 from . import _http as _ahttp
@@ -23,8 +20,7 @@ from ._settings import get as _settings_get
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-    from shapely import MultiPolygon
-    from shapely import Polygon
+    from shapely import MultiPolygon, Polygon
 
 # re-export pure-computation helpers from sync module
 _get_network_filter = _overpass_sync._get_network_filter

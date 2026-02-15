@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """Async alternatives to osmnx's IO-bound public API functions.
 
 Provides ``async`` versions of all osmnx functions that perform network
