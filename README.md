@@ -139,13 +139,13 @@ cd osmnx-async
 uv sync
 
 # Unit tests (mocked, fast)
-uv run pytest -m "not integration"
+make test
 
 # Integration tests (real API calls, slower)
-uv run pytest -m integration
+make test-integration
 
-# All tests
-uv run pytest
+# Build (syncs version from installed osmnx, then builds wheel)
+make build
 ```
 
 ## License

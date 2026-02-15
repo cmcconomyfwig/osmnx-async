@@ -16,10 +16,15 @@ Usage example::
 
 from __future__ import annotations
 
+from importlib.metadata import version as _pkg_version
+
 # Validate osmnx compatibility at import time
 from ._compat import check_osmnx_compatibility
 
 check_osmnx_compatibility()
+
+# Package version (set at build time via _version.py)
+__version__: str = _pkg_version("osmnx-async")
 
 # Public submodules
 from . import elevation as elevation
