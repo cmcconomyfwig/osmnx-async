@@ -2,6 +2,8 @@
 
 Async versions of [osmnx](https://github.com/gboeing/osmnx)'s network-bound functions. Same names, same parameters, same return types — just add `await`.
 
+> **Note:** This is an independent community project and is not affiliated with or endorsed by the osmnx project or its maintainers.
+
 ## Why?
 
 osmnx makes synchronous HTTP requests to the Overpass and Nominatim APIs. If you're building an async application (FastAPI, aiohttp, Discord bots, data pipelines with `asyncio.gather`), those blocking calls stall your entire event loop.
