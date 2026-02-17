@@ -28,7 +28,7 @@ check_osmnx_compatibility()
 __version__: str = _pkg_version("osmnx-async")
 
 # Public submodules
-from . import _settings as settings
+from . import _settings as settings  # noqa: F401
 from . import elevation as elevation
 from . import features as features
 from . import geocoder as geocoder
