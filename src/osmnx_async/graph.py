@@ -5,12 +5,14 @@ from __future__ import annotations
 import logging as lg
 
 import networkx as nx
-from osmnx import distance, projection, simplification, stats, truncate, utils, utils_geo
+from osmnx import distance, projection, simplification, stats, truncate, utils_geo
 from osmnx import graph as _graph_sync
 from shapely import MultiPolygon, Polygon
 
 from . import _overpass, geocoder
+from ._settings import _apply_overrides
 from ._settings import get as _settings_get
+from ._settings import log as _log
 
 
 async def graph_from_bbox(
@@ -57,7 +59,7 @@ async def graph_from_bbox(
     )
 
     msg = f"graph_from_bbox returned graph with {len(G):,} nodes and {len(G.edges):,} edges"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return G
 
 
@@ -120,7 +122,7 @@ async def graph_from_point(
         G = truncate.truncate_graph_dist(G, node, dist)
 
     msg = f"graph_from_point returned graph with {len(G):,} nodes and {len(G.edges):,} edges"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return G
 
 
@@ -176,7 +178,7 @@ async def graph_from_address(
     )
 
     msg = f"graph_from_address returned graph with {len(G):,} nodes and {len(G.edges):,} edges"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return G
 
 
@@ -218,7 +220,7 @@ async def graph_from_place(
     gdf = await geocoder.geocode_to_gdf(query, which_result=which_result)
     polygon = gdf.union_all()
     msg = "Constructed place geometry polygon(s) to query Overpass"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     G = await graph_from_polygon(
         polygon,
@@ -230,7 +232,7 @@ async def graph_from_place(
     )
 
     msg = f"graph_from_place returned graph with {len(G):,} nodes and {len(G.edges):,} edges"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return G
 
 
@@ -281,10 +283,14 @@ async def graph_from_polygon(
         )
         raise TypeError(msg)
 
-    # create a buffered polygon 0.5km around the desired one
-    poly_proj, crs_utm = projection.project_geometry(polygon)
-    poly_proj_buff = poly_proj.buffer(500)
-    poly_buff, _ = projection.project_geometry(poly_proj_buff, crs=crs_utm, to_latlong=True)
+    # create a buffered polygon 0.5km around the desired one;
+    # apply contextvar overrides so projection reads correct default_crs
+    with _apply_overrides():
+        poly_proj, crs_utm = projection.project_geometry(polygon)
+        poly_proj_buff = poly_proj.buffer(500)
+        poly_buff, _ = projection.project_geometry(
+            poly_proj_buff, crs=crs_utm, to_latlong=True,
+        )
 
     # download the network data asynchronously, collecting all responses
     response_jsons = [
@@ -296,35 +302,37 @@ async def graph_from_polygon(
         )
     ]
 
-    # reuse sync CPU-bound graph construction
-    bidirectional = network_type in _settings_get("bidirectional_network_types")
-    G_buff = _graph_sync._create_graph(iter(response_jsons), bidirectional)
+    # reuse sync CPU-bound graph construction; apply contextvar overrides so
+    # the sync functions see the correct osmnx.settings values
+    with _apply_overrides():
+        bidirectional = network_type in _settings_get("bidirectional_network_types")
+        G_buff = _graph_sync._create_graph(iter(response_jsons), bidirectional)
 
-    # truncate, simplify, etc. — all CPU-bound, no IO
-    G_buff = truncate.truncate_graph_polygon(
-        G_buff,
-        poly_buff,
-        truncate_by_edge=truncate_by_edge,
-    )
+        # truncate, simplify, etc. — all CPU-bound, no IO
+        G_buff = truncate.truncate_graph_polygon(
+            G_buff,
+            poly_buff,
+            truncate_by_edge=truncate_by_edge,
+        )
 
-    if not retain_all:
-        G_buff = truncate.largest_component(G_buff, strongly=False)
+        if not retain_all:
+            G_buff = truncate.largest_component(G_buff, strongly=False)
 
-    if simplify:
-        G_buff = simplification.simplify_graph(G_buff)
+        if simplify:
+            G_buff = simplification.simplify_graph(G_buff)
 
-    G = truncate.truncate_graph_polygon(
-        G_buff,
-        polygon,
-        truncate_by_edge=truncate_by_edge,
-    )
+        G = truncate.truncate_graph_polygon(
+            G_buff,
+            polygon,
+            truncate_by_edge=truncate_by_edge,
+        )
 
-    if not retain_all:
-        G = truncate.largest_component(G, strongly=False)
+        if not retain_all:
+            G = truncate.largest_component(G, strongly=False)
 
-    spn = stats.count_streets_per_node(G_buff, nodes=G.nodes)
-    nx.set_node_attributes(G, values=spn, name="street_count")
+        spn = stats.count_streets_per_node(G_buff, nodes=G.nodes)
+        nx.set_node_attributes(G, values=spn, name="street_count")
 
     msg = f"graph_from_polygon returned graph with {len(G):,} nodes and {len(G.edges):,} edges"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return G

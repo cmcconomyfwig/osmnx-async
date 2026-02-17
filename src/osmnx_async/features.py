@@ -6,10 +6,12 @@ import logging as lg
 from typing import TYPE_CHECKING
 
 from osmnx import features as _features_sync
-from osmnx import utils, utils_geo
+from osmnx import utils_geo
 from shapely import MultiPolygon, Polygon
 
 from . import _overpass, geocoder
+from ._settings import _apply_overrides
+from ._settings import log as _log
 
 if TYPE_CHECKING:
     import geopandas as gpd
@@ -112,7 +114,7 @@ async def features_from_place(
     gdf = await geocoder.geocode_to_gdf(query, which_result=which_result)
     polygon = gdf.union_all()
     msg = "Constructed place geometry polygon(s) to query Overpass"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     return await features_from_polygon(polygon, tags)
 
@@ -155,5 +157,7 @@ async def features_from_polygon(
         rj async for rj in _overpass._download_overpass_features(polygon, tags)
     ]
 
-    # reuse sync CPU-bound GeoDataFrame creation
-    return _features_sync._create_gdf(iter(response_jsons), polygon, tags)
+    # reuse sync CPU-bound GeoDataFrame creation; apply contextvar overrides
+    # so the sync function sees the correct osmnx.settings values
+    with _apply_overrides():
+        return _features_sync._create_gdf(iter(response_jsons), polygon, tags)

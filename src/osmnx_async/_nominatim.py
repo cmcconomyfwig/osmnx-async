@@ -8,12 +8,13 @@ from collections import OrderedDict
 from typing import Any
 
 import httpx
-from osmnx import _http, utils
+from osmnx import _http
 from osmnx._errors import InsufficientResponseError
 
 from . import _http as _ahttp
 from ._rate_limit import _rate_limiter
 from ._settings import get as _settings_get
+from ._settings import log as _log
 
 
 async def _download_nominatim_element(
@@ -113,11 +114,11 @@ async def _nominatim_request(
     await _rate_limiter.wait(hostname, min_interval=1.0)
 
     msg = f"Pausing before making HTTP GET request to {hostname!r}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     # transmit the HTTP GET request
     msg = f"Get {prepared_url} with timeout={_settings_get('requests_timeout')}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     client_kwargs, request_kwargs = _ahttp._build_request_kwargs()
     async with httpx.AsyncClient(**client_kwargs) as client:
@@ -136,7 +137,7 @@ async def _nominatim_request(
             f"{hostname!r} responded {response.status_code} {response.reason_phrase}: "
             f"we'll retry in {error_pause} secs"
         )
-        utils.log(msg, level=lg.WARNING)
+        _log(msg, level=lg.WARNING)
         await asyncio.sleep(error_pause)
         return await _nominatim_request(params, request_type=request_type)
 

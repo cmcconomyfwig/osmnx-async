@@ -17,9 +17,14 @@ from __future__ import annotations
 import contextvars
 import sys
 import types
-from typing import Any
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 import osmnx.settings as _osmnx_settings
+import osmnx.utils as _osmnx_utils
 
 _settings_overrides: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
     "_settings_overrides",
@@ -47,6 +52,41 @@ def get(name: str) -> Any:  # noqa: ANN401
     if overrides is not None and name in overrides:
         return overrides[name]
     return getattr(_osmnx_settings, name)
+
+
+@contextmanager
+def _apply_overrides() -> Generator[None, None, None]:
+    """Temporarily apply contextvar overrides to ``osmnx.settings`` for sync calls.
+
+    Safe for synchronous blocks on the event loop thread (no ``await`` inside
+    the ``with`` block).  **Not** safe around ``asyncio.to_thread()`` calls
+    because other coroutines can run during the ``await``.
+    """
+    overrides = _settings_overrides.get()
+    if overrides is None or len(overrides) == 0:
+        yield
+        return
+
+    originals = {}
+    for key, value in overrides.items():
+        originals[key] = getattr(_osmnx_settings, key)
+        setattr(_osmnx_settings, key, value)
+    try:
+        yield
+    finally:
+        for key, value in originals.items():
+            setattr(_osmnx_settings, key, value)
+
+
+def log(
+    message: str,
+    level: int | None = None,
+    name: str | None = None,
+    filename: str | None = None,
+) -> None:
+    """Contextvar-aware wrapper around ``osmnx.utils.log``."""
+    with _apply_overrides():
+        _osmnx_utils.log(message, level=level, name=name, filename=filename)
 
 
 class _SettingsProxy(types.ModuleType):
@@ -103,5 +143,7 @@ _proxy.__loader__ = getattr(_self, "__loader__", None)
 # ``osmnx_async.settings.get(...)`` keep working.
 _proxy.get = get  # type: ignore[attr-defined]
 _proxy._settings_overrides = _settings_overrides  # type: ignore[attr-defined]
+_proxy._apply_overrides = _apply_overrides  # type: ignore[attr-defined]
+_proxy.log = log  # type: ignore[attr-defined]
 
 sys.modules[__name__] = _proxy

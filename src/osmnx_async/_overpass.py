@@ -10,23 +10,46 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 import numpy as np
-from osmnx import _http, utils
+from osmnx import _http
 from osmnx import _overpass as _overpass_sync
 from osmnx._errors import InsufficientResponseError
 
 from . import _http as _ahttp
+from ._settings import _apply_overrides
 from ._settings import get as _settings_get
+from ._settings import log as _log
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from shapely import MultiPolygon, Polygon
 
-# re-export pure-computation helpers from sync module
-_get_network_filter = _overpass_sync._get_network_filter
-_make_overpass_settings = _overpass_sync._make_overpass_settings
-_make_overpass_polygon_coord_strs = _overpass_sync._make_overpass_polygon_coord_strs
-_create_overpass_features_query = _overpass_sync._create_overpass_features_query
+
+# Wrap sync helpers so contextvar overrides are applied to osmnx.settings
+# before the sync code reads them.
+def _get_network_filter(network_type: str) -> str:
+    with _apply_overrides():
+        return _overpass_sync._get_network_filter(network_type)
+
+
+def _make_overpass_settings() -> str:
+    with _apply_overrides():
+        return _overpass_sync._make_overpass_settings()
+
+
+def _make_overpass_polygon_coord_strs(
+    polygon: Polygon | MultiPolygon,
+) -> list[str]:
+    with _apply_overrides():
+        return _overpass_sync._make_overpass_polygon_coord_strs(polygon)
+
+
+def _create_overpass_features_query(
+    polygon_coord_str: str,
+    tags: dict[str, bool | str | list[str]],
+) -> str:
+    with _apply_overrides():
+        return _overpass_sync._create_overpass_features_query(polygon_coord_str, tags)
 
 
 async def _get_overpass_pause(
@@ -69,7 +92,7 @@ async def _get_overpass_pause(
             response_text = response.text
     except httpx.ConnectError as e:  # pragma: no cover
         msg = f"Unable to reach {url}, {e}"
-        utils.log(msg, level=lg.ERROR)
+        _log(msg, level=lg.ERROR)
         return default_pause
 
     try:
@@ -77,7 +100,7 @@ async def _get_overpass_pause(
         status_first_part = status.split(" ")[0]
     except (AttributeError, IndexError, ValueError):  # pragma: no cover
         msg = f"Unable to parse {url} response: {response_text}"
-        utils.log(msg, level=lg.ERROR)
+        _log(msg, level=lg.ERROR)
         return default_pause
 
     try:
@@ -99,7 +122,7 @@ async def _get_overpass_pause(
 
         else:
             msg = f"Unrecognized server status: {status!r}"
-            utils.log(msg, level=lg.ERROR)
+            _log(msg, level=lg.ERROR)
             return default_pause
 
     return pause
@@ -135,12 +158,12 @@ async def _overpass_request(data: OrderedDict[str, Any]) -> dict[str, Any]:
     pause = await _get_overpass_pause(overpass_url)
     hostname = _http._hostname_from_url(url)
     msg = f"Pausing {pause} second(s) before making HTTP POST request to {hostname!r}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     await asyncio.sleep(pause)
 
     # transmit the HTTP POST request
     msg = f"Post {prepared_url} with timeout={_settings_get('requests_timeout')}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     client_kwargs, request_kwargs = _ahttp._build_request_kwargs()
     headers = {**_ahttp._get_http_headers(), **host_headers}
@@ -161,7 +184,7 @@ async def _overpass_request(data: OrderedDict[str, Any]) -> dict[str, Any]:
             f"{hostname!r} responded {response.status_code} {response.reason_phrase}: "
             f"we'll retry in {error_pause} secs"
         )
-        utils.log(msg, level=lg.WARNING)
+        _log(msg, level=lg.WARNING)
         await asyncio.sleep(error_pause)
         return await _overpass_request(data)
 
@@ -205,7 +228,7 @@ async def _download_overpass_network(
     overpass_settings = _make_overpass_settings()
     polygon_coord_strs = _make_overpass_polygon_coord_strs(polygon)
     msg = f"Requesting data from API in {len(polygon_coord_strs)} request(s)"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     for polygon_coord_str in polygon_coord_strs:
         for way_filter in way_filters:
@@ -236,7 +259,7 @@ async def _download_overpass_features(
     """
     polygon_coord_strs = _make_overpass_polygon_coord_strs(polygon)
     msg = f"Requesting data from API in {len(polygon_coord_strs)} request(s)"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     for polygon_coord_str in polygon_coord_strs:
         query_str = _create_overpass_features_query(polygon_coord_str, tags)

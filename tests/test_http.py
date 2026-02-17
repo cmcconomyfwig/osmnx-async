@@ -107,3 +107,70 @@ class TestAsyncCache:
             "https://test.example.com/nonexistent-url-67890",
         )
         assert result is None
+
+    async def test_retrieve_respects_use_cache_false(self) -> None:
+        """Cache retrieval returns None when use_cache is False via contextvar."""
+        from osmnx_async._settings import _settings_overrides
+
+        test_url = "https://test.example.com/osmnx-async-cache-override-test"
+        test_data = {"cached": "data"}
+
+        # Populate cache with default settings (use_cache=True)
+        await _async_save_to_cache(test_url, test_data, ok=True)
+        assert await _async_retrieve_from_cache(test_url) == test_data
+
+        # Override use_cache=False → retrieval must return None
+        token = _settings_overrides.set({"use_cache": False})
+        try:
+            result = await _async_retrieve_from_cache(test_url)
+            assert result is None
+        finally:
+            _settings_overrides.reset(token)
+
+    async def test_save_respects_use_cache_false(self) -> None:
+        """Cache save is skipped when use_cache is False via contextvar."""
+        from osmnx_async._settings import _settings_overrides
+
+        test_url = "https://test.example.com/osmnx-async-no-save-test"
+        test_data = {"should_not": "be_cached"}
+
+        # Try to save with use_cache=False
+        token = _settings_overrides.set({"use_cache": False})
+        try:
+            await _async_save_to_cache(test_url, test_data, ok=True)
+        finally:
+            _settings_overrides.reset(token)
+
+        # With default use_cache=True, data should not be found
+        result = await _async_retrieve_from_cache(test_url)
+        assert result is None
+
+    async def test_cache_isolation_between_tasks(self) -> None:
+        """Concurrent tasks with different use_cache settings are isolated."""
+        import asyncio
+        from typing import Any
+
+        from osmnx_async._settings import _settings_overrides
+
+        test_url = "https://test.example.com/osmnx-async-isolation-test"
+        test_data = {"isolation": "test"}
+        results: dict[str, Any] = {}
+
+        # Pre-populate cache
+        await _async_save_to_cache(test_url, test_data, ok=True)
+
+        async def task_cache_disabled() -> None:
+            _settings_overrides.set({"use_cache": False})
+            results["disabled"] = await _async_retrieve_from_cache(test_url)
+
+        async def task_cache_enabled() -> None:
+            # No override → use_cache defaults to True
+            results["enabled"] = await _async_retrieve_from_cache(test_url)
+
+        await asyncio.gather(
+            asyncio.create_task(task_cache_disabled()),
+            asyncio.create_task(task_cache_enabled()),
+        )
+
+        assert results["disabled"] is None
+        assert results["enabled"] == test_data

@@ -9,11 +9,11 @@ from typing import Any
 import geopandas as gpd
 import pandas as pd
 from osmnx import geocoder as _geocoder_sync
-from osmnx import utils
 from osmnx._errors import InsufficientResponseError
 
 from . import _nominatim
 from ._settings import get as _settings_get
+from ._settings import log as _log
 
 
 async def geocode(query: str) -> tuple[float, float]:
@@ -42,7 +42,7 @@ async def geocode(query: str) -> tuple[float, float]:
         point = (lat, lon)
 
         msg = f"Geocoded {query!r} to {point}"
-        utils.log(msg, level=lg.INFO)
+        _log(msg, level=lg.INFO)
         return point
 
     msg = f"Nominatim could not geocode query {query!r}."
@@ -94,7 +94,7 @@ async def geocode_to_gdf(
     gdf = pd.concat(results, ignore_index=True).set_crs(_settings_get("default_crs"))
 
     msg = f"Created GeoDataFrame with {len(gdf)} rows from {len(q_list)} queries"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return gdf
 
 
@@ -158,7 +158,7 @@ async def _async_geocode_query_to_gdf(
             f"Nominatim geocoder returned a {geom_type} as the geometry"
             f" for query {query!r}"
         )
-        utils.log(msg, level=lg.WARNING)
+        _log(msg, level=lg.WARNING)
 
     bottom, top, left, right = result["boundingbox"]
     feature: dict[str, Any] = {

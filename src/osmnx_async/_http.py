@@ -11,10 +11,11 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
-from osmnx import _http, utils
+from osmnx import _http
 from osmnx._errors import InsufficientResponseError, ResponseStatusCodeError
 
 from ._settings import get as _settings_get
+from ._settings import log as _log
 
 # lock protecting concurrent cache file reads/writes
 _cache_lock = asyncio.Lock()
@@ -38,6 +39,8 @@ async def _async_retrieve_from_cache(
     response_json
         The cached response for ``url`` if it exists, otherwise None.
     """
+    if not _settings_get("use_cache"):
+        return None
     async with _cache_lock:
         return await asyncio.to_thread(_http._retrieve_from_cache, url)
 
@@ -61,6 +64,8 @@ async def _async_save_to_cache(
     ok
         Whether the HTTP status was successful.
     """
+    if not _settings_get("use_cache"):
+        return
     async with _cache_lock:
         await asyncio.to_thread(_http._save_to_cache, url, response_json, ok)
 
@@ -81,7 +86,7 @@ async def _resolve_host_via_doh(hostname: str) -> str:
     doh_url_template = _settings_get("doh_url_template")
     if doh_url_template is None:
         msg = "User set `doh_url_template=None`, requesting host by name"
-        utils.log(msg, level=lg.WARNING)
+        _log(msg, level=lg.WARNING)
         return hostname
 
     err_msg = f"Failed to resolve {hostname!r} IP via DoH, requesting host by name"
@@ -92,7 +97,7 @@ async def _resolve_host_via_doh(hostname: str) -> str:
             data = response.json()
 
     except httpx.HTTPError:  # pragma: no cover
-        utils.log(err_msg, level=lg.ERROR)
+        _log(err_msg, level=lg.ERROR)
         return hostname
 
     else:
@@ -100,7 +105,7 @@ async def _resolve_host_via_doh(hostname: str) -> str:
             ip_address: str = data["Answer"][0]["data"]
             return ip_address
 
-        utils.log(err_msg, level=lg.ERROR)
+        _log(err_msg, level=lg.ERROR)
         return hostname
 
 
@@ -131,11 +136,11 @@ async def _resolve_url_to_ip(url: str) -> tuple[str, dict[str, str]]:
             f"Encountered gaierror while trying to resolve {hostname!r},"
             " trying again via DoH..."
         )
-        utils.log(msg, level=lg.ERROR)
+        _log(msg, level=lg.ERROR)
         ip = await _resolve_host_via_doh(hostname)
 
     msg = f"Resolved {hostname!r} to {ip!r}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     return url, {}
 
 
@@ -239,7 +244,7 @@ def _parse_response(
     hostname = _http._hostname_from_url(str(response.url))
     size_kb = len(response.content) / 1000
     msg = f"Downloaded {size_kb:,.1f}kB from {hostname!r} with status {response.status_code}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     try:
         response_json: dict[str, Any] | list[dict[str, Any]] = response.json()
@@ -248,17 +253,17 @@ def _parse_response(
             f"{hostname!r} responded: {response.status_code}"
             f" {response.reason_phrase} {response.text}"
         )
-        utils.log(msg, level=lg.ERROR)
+        _log(msg, level=lg.ERROR)
         if response.is_success:
             raise InsufficientResponseError(msg) from e
         raise ResponseStatusCodeError(msg) from e
 
     if isinstance(response_json, dict) and "remark" in response_json:  # pragma: no cover
         msg = f"{hostname!r} remarked: {response_json['remark']!r}"
-        utils.log(msg, level=lg.WARNING)
+        _log(msg, level=lg.WARNING)
 
     if not response.is_success:
         msg = f"{hostname!r} returned HTTP status code {response.status_code}"
-        utils.log(msg, level=lg.WARNING)
+        _log(msg, level=lg.WARNING)
 
     return response_json

@@ -10,11 +10,12 @@ import httpx
 import networkx as nx
 import numpy as np
 import pandas as pd
-from osmnx import _http, utils
+from osmnx import _http
 from osmnx._errors import InsufficientResponseError
 
 from . import _http as _ahttp
 from ._settings import get as _settings_get
+from ._settings import log as _log
 
 
 async def add_node_elevations_google(
@@ -52,7 +53,7 @@ async def add_node_elevations_google(
     hostname = _http._hostname_from_url(_settings_get("elevation_url_template"))
 
     msg = f"Requesting node elevations from {hostname!r} in {n_calls} request(s)"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     # build all URLs up front
     urls = []
@@ -88,7 +89,7 @@ async def add_node_elevations_google(
         f"Graph has {len(G):,} nodes and we received {len(results):,}"
         f" results from {hostname!r}"
     )
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     if not (len(results) == len(G) == len(node_points)):  # pragma: no cover
         err_msg = f"{msg}\n{response_json}"
         raise InsufficientResponseError(err_msg)
@@ -97,7 +98,7 @@ async def add_node_elevations_google(
     df_elev["elevation"] = [result["elevation"] for result in results]
     nx.set_node_attributes(G, name="elevation", values=df_elev["elevation"].to_dict())
     msg = f"Added elevation data from {hostname!r} to all nodes."
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     return G
 
@@ -123,11 +124,11 @@ async def _elevation_request(url: str, pause: float) -> dict[str, Any]:
 
     hostname = _http._hostname_from_url(url)
     msg = f"Pausing {pause} second(s) before making HTTP GET request to {hostname!r}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
     await asyncio.sleep(pause)
 
     msg = f"Get {url} with timeout={_settings_get('requests_timeout')}"
-    utils.log(msg, level=lg.INFO)
+    _log(msg, level=lg.INFO)
 
     client_kwargs, request_kwargs = _ahttp._build_request_kwargs()
     async with httpx.AsyncClient(**client_kwargs) as client:

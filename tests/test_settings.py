@@ -8,7 +8,7 @@ import asyncio
 import osmnx as ox
 
 import osmnx_async
-from osmnx_async._settings import _settings_overrides, get
+from osmnx_async._settings import _apply_overrides, _settings_overrides, get
 
 
 class TestAsyncSettings:
@@ -147,5 +147,53 @@ class TestSettingsProxy:
         token = _settings_overrides.set(None)
         try:
             asyncio.run(_run())
+        finally:
+            _settings_overrides.reset(token)
+
+
+class TestApplyOverrides:
+    """Test the _apply_overrides context manager."""
+
+    def test_patches_upstream_temporarily(self) -> None:
+        """Overrides are visible on osmnx.settings inside the context manager."""
+        original = ox.settings.requests_timeout
+        token = _settings_overrides.set({"requests_timeout": 42})
+        try:
+            assert ox.settings.requests_timeout == original
+            with _apply_overrides():
+                assert ox.settings.requests_timeout == 42
+            assert ox.settings.requests_timeout == original
+        finally:
+            _settings_overrides.reset(token)
+
+    def test_restores_on_exception(self) -> None:
+        """Original values are restored even if the body raises."""
+        original = ox.settings.requests_timeout
+        token = _settings_overrides.set({"requests_timeout": 99})
+        try:
+            try:
+                with _apply_overrides():
+                    assert ox.settings.requests_timeout == 99
+                    raise RuntimeError("boom")
+            except RuntimeError:
+                pass
+            assert ox.settings.requests_timeout == original
+        finally:
+            _settings_overrides.reset(token)
+
+    def test_noop_when_no_overrides(self) -> None:
+        """No-op when the contextvar is None or empty."""
+        original = ox.settings.requests_timeout
+        token = _settings_overrides.set(None)
+        try:
+            with _apply_overrides():
+                assert ox.settings.requests_timeout == original
+        finally:
+            _settings_overrides.reset(token)
+
+        token = _settings_overrides.set({})
+        try:
+            with _apply_overrides():
+                assert ox.settings.requests_timeout == original
         finally:
             _settings_overrides.reset(token)
