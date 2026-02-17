@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import osmnx as ox
 
+import osmnx_async
 from osmnx_async._settings import _settings_overrides, get
 
 
@@ -33,6 +34,11 @@ class TestAsyncSettings:
         assert get("use_cache") is False
         _settings_overrides.reset(token)
         assert get("use_cache") is True
+
+    def test_settings_exported_from_package(self) -> None:
+        """settings module is accessible as osmnx_async.settings."""
+        assert hasattr(osmnx_async, "settings")
+        assert osmnx_async.settings.get("use_cache") is True
 
     def test_reads_from_osmnx_settings(self) -> None:
         """get() reads live values from osmnx.settings, not copies."""
