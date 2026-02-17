@@ -397,7 +397,7 @@ wheels = [
 
 [[package]]
 name = "osmnx-async"
-version = "2.1.0.post1"
+version = "2.1.0.post2"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

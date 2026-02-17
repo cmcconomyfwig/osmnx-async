@@ -1,7 +1,7 @@
 [project]
 name = "osmnx-async"
 # dynamic = ["version"]
-version = "2.1.0.post1"
+version = "2.1.0.post2"
 description = "Async alternatives to osmnx's IO-bound public API functions"
 readme = "README.md"
 authors = [
