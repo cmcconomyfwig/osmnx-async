@@ -1,4 +1,4 @@
-.PHONY: build test test-integration lint
+.PHONY: build test test-integration lint sync_osmnx_version
 
 build:
 	uv run python scripts/sync_version.py
@@ -12,3 +12,8 @@ test-integration:
 
 lint:
 	uv run ruff check src tests
+
+sync_osmnx_version:
+	uv run python scripts/sync_osmnx_version.py
+	uv sync
+	uv run pytest
